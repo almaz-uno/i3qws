@@ -7,6 +7,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -93,7 +96,7 @@ func initConfig() {
 	}
 }
 
-func runWithInterrupt(runFunc func(ctx context.Context) error) {
+func doMain(runFunc func(ctx context.Context) error) {
 	// context should be canceled while Int signal will be caught
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -121,4 +124,42 @@ func runWithInterrupt(runFunc func(ctx context.Context) error) {
 	} else {
 		logrus.Info("Exiting.") // it seems to be an nonexistent exodus
 	}
+}
+
+func getURL(ctx context.Context, url string) error {
+	socket := viper.GetString(socketFileSett)
+	if len(socket) == 0 {
+		return fmt.Errorf("%w: %s", errSettingUnspecified, socketFileSett)
+	}
+
+	cl := http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, "unix", socket)
+			},
+		},
+	}
+
+	resp, err := cl.Get(url)
+	if resp != nil {
+		defer resp.Body.Close() // nolint: errcheck
+	}
+
+	if err != nil {
+		return fmt.Errorf("unable to get %s: %w", url, err)
+	}
+
+	bb, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logrus.WithError(err).Debugf("Unable to read answer from %s", url)
+	}
+	logrus.WithFields(logrus.Fields{
+		"answer": string(bb),
+		"url":    url,
+	}).Debugf("Successfully invoked")
+
+	fmt.Fprintf(os.Stdout, "%v", string(bb))
+
+	return err
 }

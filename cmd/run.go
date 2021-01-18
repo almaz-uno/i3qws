@@ -34,7 +34,7 @@ User can bring up any window with 'focus' command.
 
 Warning! Windows list always clears in case of restart i3wm.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		runWithInterrupt(doRun)
+		doMain(doRun)
 	},
 }
 
@@ -54,7 +54,7 @@ func doRun(ctx context.Context) error {
 		return fmt.Errorf("%w: %s", errSettingUnspecified, socketFileSett)
 	}
 
-	err := doFocus(ctx, "0")
+	err := getURL(ctx, listURL)
 	if err == nil {
 		return fmt.Errorf("%w on %s", errAnotherInstanceRunning, socket)
 	}
@@ -65,12 +65,19 @@ func doRun(ctx context.Context) error {
 
 	logrus.Info("Successfully starting main loop")
 
+	stopCh := make(chan bool)
+
 	i3qws := i3qws.DoSpy(ctx, viper.GetString(markFormatSett))
-	echo, err := serve.EchoServe(ctx, i3qws, socket)
+	echo, err := serve.EchoServe(ctx, stopCh, i3qws, socket)
 	if err != nil {
 		return err
 	}
-	<-ctx.Done()
+
+	select {
+	case <-ctx.Done():
+	case <-stopCh:
+		logrus.Info("Request to stop is got. Stopping.")
+	}
 
 	sctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()

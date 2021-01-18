@@ -9,6 +9,7 @@ import (
 
 	"github.com/cured-plumbum/i3qws/pkg/i3qws"
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,7 +20,7 @@ type (
 )
 
 // EchoServe creates and starts echo server on Unix socket
-func EchoServe(ctx context.Context, i3qws *i3qws.I3qws, socket string) (*echo.Echo, error) {
+func EchoServe(ctx context.Context, stopCh chan bool, i3qws *i3qws.I3qws, socket string) (*echo.Echo, error) {
 	var lc net.ListenConfig
 	l, err := lc.Listen(ctx, "unix", socket)
 	if err != nil {
@@ -28,10 +29,13 @@ func EchoServe(ctx context.Context, i3qws *i3qws.I3qws, socket string) (*echo.Ec
 
 	e := echo.New()
 	// e.Logger = logrus.StandardLogger()
+	e.Pre(middleware.RemoveTrailingSlash())
+
 	e.Listener = l
 	o := &ops{i3qws: i3qws}
 	e.Any("/focus/:num", o.focus)
-	e.Any("/dump", o.dump)
+	e.Any("/list", o.list)
+	e.Any("/stop", o.stop(stopCh))
 
 	go func() {
 		if e2 := e.Start(""); e != nil {
@@ -57,7 +61,14 @@ func (o *ops) focus(c echo.Context) error {
 	return c.JSON(http.StatusOK, n)
 }
 
-func (o *ops) dump(c echo.Context) error {
+func (o *ops) list(c echo.Context) error {
 	nn := o.i3qws.DumpList()
 	return c.JSON(http.StatusOK, nn)
+}
+
+func (o *ops) stop(stopCh chan bool) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		close(stopCh)
+		return c.String(http.StatusOK, "done")
+	}
 }
