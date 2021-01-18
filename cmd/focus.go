@@ -10,9 +10,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -29,33 +26,9 @@ var focusCmd = &cobra.Command{
 
 Negative number mean posion from the tail of the queue: -1 - the last window, -2 - one from the tail and so on.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// context should be canceled while Int signal will be caught
-		ctx, cancel := context.WithCancel(context.Background())
-
-		// main processing loop
-		retChan := make(chan error, 1)
-		go func() {
-			err2 := doFocus(ctx, args[0])
-			if err2 != nil {
-				retChan <- err2
-			}
-			close(retChan)
-		}()
-
-		// Listening OS signals
-		quit := make(chan os.Signal, 1)
-		go func() {
-			signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-			logrus.Warnf("Signal '%s' was caught. Exiting", <-quit)
-			cancel()
-		}()
-
-		// Listening for the main loop response
-		if e := <-retChan; e != nil {
-			logrus.WithError(e).Info("Exiting.")
-		} else {
-			logrus.Info("Exiting.") // it seems to be an nonexistent exodus
-		}
+		runWithInterrupt(func(ctx context.Context) error {
+			return doFocus(ctx, args[0])
+		})
 	},
 	Args: cobra.ExactArgs(1),
 }

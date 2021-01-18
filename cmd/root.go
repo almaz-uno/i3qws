@@ -4,10 +4,13 @@ Copyright © 2021 Maxim Kovrov
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
@@ -87,5 +90,35 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+}
+
+func runWithInterrupt(runFunc func(ctx context.Context) error) {
+	// context should be canceled while Int signal will be caught
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// main processing loop
+	retChan := make(chan error, 1)
+	go func() {
+		err2 := runFunc(ctx)
+		if err2 != nil {
+			retChan <- err2
+		}
+		close(retChan)
+	}()
+
+	// Listening OS signals
+	quit := make(chan os.Signal, 1)
+	go func() {
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		logrus.Warnf("Signal '%s' was caught. Exiting", <-quit)
+		cancel()
+	}()
+
+	// Listening for the main loop response
+	if e := <-retChan; e != nil {
+		logrus.WithError(e).Info("Exiting.")
+	} else {
+		logrus.Info("Exiting.") // it seems to be an nonexistent exodus
 	}
 }

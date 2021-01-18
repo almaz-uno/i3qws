@@ -6,10 +6,9 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/cured-plumbum/i3qws/pkg/i3qws"
@@ -17,11 +16,14 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"k8s.io/apimachinery/pkg/util/net"
 )
 
 const shutdownTimeout = 10 * time.Second
 
 const markFormatSett = "mark-format"
+
+var errAnotherInstanceRunning = errors.New("another instance is started")
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
@@ -30,35 +32,9 @@ var runCmd = &cobra.Command{
 	Long: `i3qws subsribes to windows change events and remembers in the memory windows got focus.
 User can bring up any window with 'focus' command.
 
-Please, warning! Windows list will be cleared in case of restart i3wm.`,
+Warning! Windows list always clears in case of restart i3wm.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// context should be canceled while Int signal will be caught
-		ctx, cancel := context.WithCancel(context.Background())
-
-		// main processing loop
-		retChan := make(chan error, 1)
-		go func() {
-			err2 := doRun(ctx)
-			if err2 != nil {
-				retChan <- err2
-			}
-			close(retChan)
-		}()
-
-		// Listening OS signals
-		quit := make(chan os.Signal, 1)
-		go func() {
-			signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-			logrus.Warnf("Signal '%s' was caught. Exiting", <-quit)
-			cancel()
-		}()
-
-		// Listening for the main loop response
-		if e := <-retChan; e != nil {
-			logrus.WithError(e).Info("Exiting.")
-		} else {
-			logrus.Info("Exiting.") // it seems to be an nonexistent exodus
-		}
+		runWithInterrupt(doRun)
 	},
 }
 
@@ -76,6 +52,15 @@ func doRun(ctx context.Context) error {
 	socket := viper.GetString(socketFileSett)
 	if len(socket) == 0 {
 		return fmt.Errorf("%w: %s", errSettingUnspecified, socketFileSett)
+	}
+
+	err := doFocus(ctx, "0")
+	if err == nil {
+		return fmt.Errorf("%w on %s", errAnotherInstanceRunning, socket)
+	}
+
+	if net.IsConnectionRefused(err) {
+		os.Remove(socket)
 	}
 
 	logrus.Info("Successfully starting main loop")
