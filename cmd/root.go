@@ -126,10 +126,10 @@ func doMain(runFunc func(ctx context.Context) error) {
 	}
 }
 
-func getURL(ctx context.Context, url string) error {
+func getURL(ctx context.Context, url string) (string, error) {
 	socket := viper.GetString(socketFileSett)
 	if len(socket) == 0 {
-		return fmt.Errorf("%w: %s", errSettingUnspecified, socketFileSett)
+		return "", fmt.Errorf("%w: %s", errSettingUnspecified, socketFileSett)
 	}
 
 	cl := http.Client{
@@ -147,7 +147,7 @@ func getURL(ctx context.Context, url string) error {
 	}
 
 	if err != nil {
-		return fmt.Errorf("unable to get %s: %w", url, err)
+		return "", fmt.Errorf("unable to get %s: %w", url, err)
 	}
 
 	bb, err := ioutil.ReadAll(resp.Body)
@@ -159,7 +159,5 @@ func getURL(ctx context.Context, url string) error {
 		"url":    url,
 	}).Debugf("Successfully invoked")
 
-	fmt.Fprintf(os.Stdout, "%v", string(bb))
-
-	return err
+	return string(bb), err
 }

@@ -53,11 +53,12 @@ func DoSpy(ctx context.Context, markFormat string) *I3qws {
 
 func (q *I3qws) onWindowEvent(ev *i3.WindowEvent) {
 	q.m.Lock()
-	logrus.WithFields(logrus.Fields{
+	le := logrus.WithFields(logrus.Fields{
 		"id":   ev.Container.ID,
 		"name": ev.Container.Name,
 		"type": ev.Container.Type,
-	}).Debugf("Window change: %s", ev.Change)
+	})
+	le.Debugf("Window change: %s", ev.Change)
 
 	shouldRemark := false
 	switch ev.Change {
@@ -68,17 +69,33 @@ func (q *I3qws) onWindowEvent(ev *i3.WindowEvent) {
 			if n.ID == ev.Container.ID {
 				q.l.MoveToFront(c)
 				found = true
+				break
 			}
 		}
 		if !found {
 			q.l.PushFront(&ev.Container)
 		}
 		shouldRemark = true
+	case "title", "mark":
+		found := false
+		for c := q.l.Front(); c != nil; c = c.Next() {
+			n := c.Value.(*i3.Node)
+			if n.ID == ev.Container.ID {
+				c.Value = &ev.Container
+				found = true
+				break
+			}
+		}
+		if !found {
+			le.Debug("Container for update was not found")
+		}
+		shouldRemark = false
 	case "close":
 		for c := q.l.Front(); c != nil; c = c.Next() {
 			n := c.Value.(*i3.Node)
 			if n.ID == ev.Container.ID {
 				q.l.Remove(c)
+				break
 			}
 		}
 		shouldRemark = true
@@ -119,7 +136,7 @@ func (q *I3qws) DumpList() []*i3.Node {
 	return nn
 }
 
-// Focus will bring to front window with number num.
+// Focus will bring to front window with number `num`.
 // `num` starts from 0 — the first window, focused, 1 — the second one, last time focused and so on
 // if `num` is negative, it should count from the end
 func (q *I3qws) Focus(num int) (*i3.Node, error) {

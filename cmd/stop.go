@@ -6,6 +6,8 @@ package cmd
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -19,7 +21,12 @@ var stopCmd = &cobra.Command{
 	Long:  `Stops application`,
 	Run: func(cmd *cobra.Command, args []string) {
 		doMain(func(ctx context.Context) error {
-			return getURL(ctx, stopURL)
+			str, err := getURL(ctx, stopURL)
+			if err == nil {
+				fmt.Fprintln(os.Stdout, str)
+				return nil
+			}
+			return err
 		})
 	},
 }

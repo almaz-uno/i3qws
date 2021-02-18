@@ -19,16 +19,19 @@ import (
 	"k8s.io/apimachinery/pkg/util/net"
 )
 
-const shutdownTimeout = 10 * time.Second
+const (
+	shutdownTimeout = 10 * time.Second
 
-const markFormatSett = "mark-format"
+	markFormatSett = "mark-format"
+)
 
 var errAnotherInstanceRunning = errors.New("another instance is started")
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Runs application for listening i3wm window events and log windows in the log",
+	Use:     "run",
+	Aliases: []string{"start"},
+	Short:   "Runs application for listening i3wm window events and log windows in the log",
 	Long: `i3qws subsribes to windows change events and remembers in the memory windows got focus.
 User can bring up any window with 'focus' command.
 
@@ -54,7 +57,7 @@ func doRun(ctx context.Context) error {
 		return fmt.Errorf("%w: %s", errSettingUnspecified, socketFileSett)
 	}
 
-	err := getURL(ctx, listURL)
+	_, err := getURL(ctx, listURL)
 	if err == nil {
 		return fmt.Errorf("%w on %s", errAnotherInstanceRunning, socket)
 	}

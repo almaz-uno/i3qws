@@ -6,6 +6,8 @@ package cmd
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -21,7 +23,7 @@ var focusCmd = &cobra.Command{
 Negative number mean posion from the tail of the queue: -1 - the last window, -2 - one from the tail and so on.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		doMain(func(ctx context.Context) error {
-			return getURL(ctx, focusURL+args[0])
+			return doFocus(ctx, args[0])
 		})
 	},
 	Args: cobra.ExactArgs(1),
@@ -29,4 +31,13 @@ Negative number mean posion from the tail of the queue: -1 - the last window, -2
 
 func init() {
 	rootCmd.AddCommand(focusCmd)
+}
+
+func doFocus(ctx context.Context, num string) error {
+	str, err := getURL(ctx, focusURL+num)
+	if err == nil {
+		fmt.Fprintln(os.Stdout, str)
+		return nil
+	}
+	return err
 }

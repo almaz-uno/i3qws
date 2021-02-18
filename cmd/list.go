@@ -6,6 +6,8 @@ package cmd
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -14,17 +16,18 @@ const listURL = "http://localhost/list/"
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:     "list",
+	Aliases: []string{"ls"},
+	Short:   "Returns array of enumerated windows as a JSON string",
+	Long:    `Returns array of enumerated windows as a JSON string`,
 	Run: func(cmd *cobra.Command, args []string) {
 		doMain(func(ctx context.Context) error {
-			return getURL(ctx, listURL)
+			str, err := getURL(ctx, listURL)
+			if err == nil {
+				fmt.Fprintln(os.Stdout, str)
+				return nil
+			}
+			return err
 		})
 	},
 }
