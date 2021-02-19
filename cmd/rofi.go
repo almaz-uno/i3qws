@@ -37,8 +37,12 @@ const (
 // rofiCmd represents the rofi command
 var rofiCmd = &cobra.Command{
 	Use:   "rofi",
-	Short: "Output windows list for rofi switcher",
-	Long:  `Output windows list for rofi switcher`,
+	Short: "Output windows list for rofi switcher or switch window by user's choice in done in rofi",
+	Long: `This command ready to using in pipe. For example, you can show window list in rofi for choosing:
+    bindsym $mod+Control+Tab exec --no-startup-id bash -c 'i3qws rofi | rofi -dmenu -p window | i3qws rofi'
+If standart input is not a named pipe, command formats and output windows list.
+If stdin is a named pipe, stdin will be read to get number window to switch.
+`,
 	Run: func(cmd *cobra.Command, args []string) {
 		doMain(func(ctx context.Context) error {
 			fi, err := os.Stdin.Stat()

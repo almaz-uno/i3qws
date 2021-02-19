@@ -18,8 +18,8 @@ const listURL = "http://localhost/list/"
 var listCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls"},
-	Short:   "Returns array of enumerated windows as a JSON string",
-	Long:    `Returns array of enumerated windows as a JSON string`,
+	Short:   "Returns the windows list as a JSON array",
+	Long:    `Returns collected list of windows as a JSON string`,
 	Run: func(cmd *cobra.Command, args []string) {
 		doMain(func(ctx context.Context) error {
 			str, err := getURL(ctx, listURL)

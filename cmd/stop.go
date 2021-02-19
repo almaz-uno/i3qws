@@ -17,8 +17,8 @@ const stopURL = "http://localhost/stop/"
 // stopCmd represents the stop command
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Stops application",
-	Long:  `Stops application`,
+	Short: "Stops the application",
+	Long:  `Stops the application with stop endpoint invocation`,
 	Run: func(cmd *cobra.Command, args []string) {
 		doMain(func(ctx context.Context) error {
 			str, err := getURL(ctx, stopURL)

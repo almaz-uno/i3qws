@@ -38,7 +38,7 @@ var rootCmd = &cobra.Command{
 	Short: "Quick select windows for i3wm.",
 	Long: `Sometimes it's good idea — switch window, not only workspaces in i3wm.
 	
-	And i3qws will bring this ability to our favorite window manager.`,
+And i3qws will bring this ability to our favorite window manager.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if level, e := logrus.ParseLevel(viper.GetString(logLevelSett)); e == nil {
 			logrus.SetLevel(level)
