@@ -17,6 +17,7 @@ type (
 		m          sync.RWMutex
 		l          *list.List
 		markFormat string
+		lastMark   int
 	}
 )
 
@@ -116,12 +117,18 @@ func (q *I3qws) onShutdownEvent(ev *i3.ShutdownEvent) {
 func (q *I3qws) remark() {
 	q.m.RLock()
 	defer q.m.RUnlock()
+	rl := q.lastMark
 	i := 0
 	for c := q.l.Front(); c != nil; c = c.Next() {
 		n := c.Value.(*i3.Node)
 		mark := fmt.Sprintf(q.markFormat, i)
 		q.runCommand("[con_id=" + strconv.FormatInt(int64(n.ID), 10) + "] mark --add " + mark) // nolint: errcheck
 		i++
+	}
+	q.lastMark = i - 1
+	for ; i <= rl; i++ {
+		mark := fmt.Sprintf(q.markFormat, i)
+		q.runCommand("unmark " + mark) // nolint: errcheck
 	}
 }
 
