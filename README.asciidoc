@@ -1,0 +1,79 @@
+= i3wm quick window switcher (i3qws)
+
+There is no windows switching in i3wm. But this application will bring this one. To be honest, there is windows switching with 3rd side application, for example, `rofi`. But windows switching modi in rofi groups windows by workspaces (in odd manner). i3qws allows to do this in different way—windows are ordered by time of usage, i.e. when they got focus.
+
+The application runs in two modes: server and client. Server should be running in background mode, it subscribes with IPC for i3wm windows events: change focus, change title, close window. When event arrives the windows list and elements updates: focused window pop to the top of list, title change remembered, closing window wipes window record in the list. 
+
+Another application, client, mode can communicate with server: `focus` command grant focus to window by window number in the window list, `rofi` command allows to organize widows selection with `rofi`. `list` command allows create your own command with `bash`, `jq` and similar tools.
+
+== How to use
+
+=== Run server 
+
+Easiest way to start using application—add in i3wm config line:
+
+`exec i3qws run &`
+
+It's better to move this line before other autostart commands. If you restart i3wm, i3qws cleans the window list.
+
+=== Stop server
+
+To stop issue:
+
+`i3qws stop`
+
+=== Switch to window
+
+To focus window in the window list by its position (zero based)
+
+`i3qws focus <position>`
+
+Last used window (except the current one):
+
+`i3qws focus 1`
+
+Last but one used window:
+
+`i3qws focus 2`
+
+and so on.
+
+But you can select from the tail of the list. Focus in the tail of the list:
+
+`i3qws focus -1`
+
+In i3config you can add bindings:
+
+Back and forth for window:
+
+`bindsym $mod+F12 exec --no-startup-id i3qws focus 1`
+
+Loop between 3 last window:
+
+`bindsym $mod+Control+2 exec --no-startup-id i3qws focus 2`
+
+=== rofi menu
+
+Another useful i3qws ability: using with `rofi`. Just add binding:
+
+`bindsym $mod+Tab exec --no-startup-id bash -c 'i3qws rofi | rofi -dmenu -p window | i3qws rofi'`
+
+=== Window list
+
+For scripts you can get the windows list with command:
+
+`i3qws ls`
+
+JSON list you can utilize with link:https://stedolan.github.io/jq/[jq] tool.
+
+=== Getting help
+
+To get help about any command, issue:
+
+`i3qws <command> --help`
+
+=== Installation
+
+To install with actual Go version, issue:
+
+`go get github.com/cured-plumbum/i3qws/`
