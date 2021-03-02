@@ -111,8 +111,8 @@ func doMain(runFunc func(ctx context.Context) error) {
 	}()
 
 	// Listening OS signals
-	quit := make(chan os.Signal, 1)
 	go func() {
+		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 		logrus.Warnf("Signal '%s' was caught. Exiting", <-quit)
 		cancel()
