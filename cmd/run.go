@@ -23,6 +23,7 @@ const (
 	shutdownTimeout = 10 * time.Second
 
 	markFormatSett = "mark-format"
+	restartSett    = "restart"
 )
 
 var errAnotherInstanceRunning = errors.New("another instance is started")
@@ -32,7 +33,7 @@ var runCmd = &cobra.Command{
 	Use:     "run",
 	Aliases: []string{"start"},
 	Short:   "Runs application for listening i3wm window events and log windows in the log",
-	Long: `i3qws subsribes to windows change events and remembers in the memory windows got focus.
+	Long: `i3qws subscribes to windows change events and remembers in the memory windows got focus.
 User can bring up any window with 'focus' command.
 
 Warning! Windows list always clears in case of restart i3wm.`,
@@ -45,6 +46,7 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 
 	runCmd.PersistentFlags().StringP(markFormatSett, "m", "%d", "marks format; not marks used, if is empty")
+	runCmd.PersistentFlags().BoolP(restartSett, "R", false, "force to restart service if it already started")
 
 	if err := viper.BindPFlags(runCmd.PersistentFlags()); err != nil {
 		panic("unable to bind flags " + err.Error())
@@ -59,10 +61,17 @@ func doRun(ctx context.Context) error {
 
 	_, err := getURL(ctx, listURL)
 	if err == nil {
-		return fmt.Errorf("%w on %s", errAnotherInstanceRunning, socket)
-	}
+		if !viper.GetBool(restartSett) {
+			return fmt.Errorf("%w on %s", errAnotherInstanceRunning, socket)
+		}
+		_, e2 := getURL(ctx, stopURL)
+		if e2 != nil {
+			logrus.WithError(e2).Warn("Unable to stop existing instance")
+		}
 
-	if net.IsConnectionRefused(err) {
+		time.Sleep(time.Second)
+
+	} else if net.IsConnectionRefused(err) {
 		os.Remove(socket)
 	}
 
