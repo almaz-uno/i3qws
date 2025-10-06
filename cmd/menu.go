@@ -11,6 +11,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/cured-plumbum/i3qws/pkg/icons"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -76,6 +77,13 @@ func outputMenu(ctx context.Context) error {
 		titleMaxWidth = viper.GetInt(titleColumnWidthSett)
 	}
 
+	// Initialize icon resolver if icons are enabled
+	var iconResolver *icons.Resolver
+	showIcons := viper.GetBool(showIconsSett)
+	if showIcons {
+		iconResolver = icons.NewResolver()
+	}
+
 	for i, w := range ww {
 		marks := strings.Builder{}
 		for _, m := range w.Marks {
@@ -86,11 +94,22 @@ func outputMenu(ctx context.Context) error {
 
 		wsp := mapping[w.ID]
 
-		fmt.Fprintf(os.Stdout, "%3d  %s  %s %s %s\n", i,
+		output := fmt.Sprintf("%3d  %s  %s %s %s", i,
 			spaceAlign(wsp, uint(maxLenWsp)),
 			spaceAlign(w.WindowProperties.Class, viper.GetUint(classColumnWidthSett)),
 			spaceAlign(strings.TrimSpace(w.Name), uint(titleMaxWidth)),
 			marks.String())
+
+		// Add icon metadata for rofi if enabled
+		if showIcons && iconResolver != nil {
+			icon := iconResolver.GetIcon(w.WindowProperties.Class)
+			if icon != "" {
+				// Rofi format: text\0icon\x1ficon-name
+				output = fmt.Sprintf("%s\x00icon\x1f%s", output, icon)
+			}
+		}
+
+		fmt.Fprintln(os.Stdout, output)
 	}
 
 	return err

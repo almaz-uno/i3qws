@@ -24,6 +24,7 @@ type (
 const (
 	classColumnWidthSett = "width-class"
 	titleColumnWidthSett = "width-title"
+	showIconsSett        = "show-icons"
 
 	// scratchName = "♺"
 	scratchName = ""
@@ -45,6 +46,7 @@ func init() {
 
 	rofiCmd.PersistentFlags().Uint(classColumnWidthSett, 20, "window class column width")
 	rofiCmd.PersistentFlags().Uint(titleColumnWidthSett, 80, "window title column width")
+	rofiCmd.PersistentFlags().Bool(showIconsSett, false, "show application icons in rofi menu")
 
 	if err := viper.BindPFlags(rofiCmd.PersistentFlags()); err != nil {
 		panic("unable to bind flags " + err.Error())

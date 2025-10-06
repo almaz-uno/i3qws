@@ -1,8 +1,6 @@
 module github.com/cured-plumbum/i3qws
 
-go 1.22.0
-
-toolchain go1.22.1
+go 1.25.0
 
 require (
 	github.com/labstack/echo v3.3.10+incompatible
