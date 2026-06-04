@@ -80,6 +80,7 @@ func (r *Resolver) GetIcon(windowClass string) string {
 func (r *Resolver) searchDesktopFiles(windowClass string) string {
 	windowClassLower := strings.ToLower(windowClass)
 
+	// Pass 1: Exact matches (StartupWMClass, Name, exact filename)
 	for _, dir := range r.dirs {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
@@ -92,44 +93,27 @@ func (r *Resolver) searchDesktopFiles(windowClass string) string {
 			}
 
 			desktopFile := filepath.Join(dir, entry.Name())
-			if de := r.parseDesktopFile(desktopFile); de != nil {
-				// Match by StartupWMClass first
-				if de.StartupWMClass != "" {
-					if strings.EqualFold(de.StartupWMClass, windowClass) {
-						logrus.WithFields(logrus.Fields{
-							"windowClass": windowClass,
-							"icon":        de.Icon,
-							"desktopFile": desktopFile,
-							"matchBy":     "StartupWMClass",
-						}).Debug("Icon found")
-						return de.Icon
-					}
-				}
+			if icon := r.matchDesktopFile(desktopFile, entry.Name(), windowClass, windowClassLower, true); icon != "" {
+				return icon
+			}
+		}
+	}
 
-				// Match by Name
-				if de.Name != "" {
-					if strings.EqualFold(de.Name, windowClass) {
-						logrus.WithFields(logrus.Fields{
-							"windowClass": windowClass,
-							"icon":        de.Icon,
-							"desktopFile": desktopFile,
-							"matchBy":     "Name",
-						}).Debug("Icon found")
-						return de.Icon
-					}
-				}
+	// Pass 2: Fuzzy matches (substring in filename)
+	for _, dir := range r.dirs {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
 
-				// Match by desktop filename (without .desktop)
-				baseName := strings.TrimSuffix(entry.Name(), ".desktop")
-				if strings.EqualFold(baseName, windowClass) || strings.Contains(strings.ToLower(baseName), windowClassLower) {
-					logrus.WithFields(logrus.Fields{
-						"windowClass": windowClass,
-						"icon":        de.Icon,
-						"desktopFile": desktopFile,
-						"matchBy":     "filename",
-					}).Debug("Icon found")
-					return de.Icon
-				}
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".desktop") {
+				continue
+			}
+
+			desktopFile := filepath.Join(dir, entry.Name())
+			if icon := r.matchDesktopFile(desktopFile, entry.Name(), windowClass, windowClassLower, false); icon != "" {
+				return icon
 			}
 		}
 	}
@@ -137,6 +121,62 @@ func (r *Resolver) searchDesktopFiles(windowClass string) string {
 	// Fallback: use window class as icon name (in lowercase)
 	logrus.WithField("windowClass", windowClass).Debug("Icon not found in desktop files, using window class as icon name")
 	return windowClassLower
+}
+
+func (r *Resolver) matchDesktopFile(desktopFile, entryName, windowClass, windowClassLower string, exactOnly bool) string {
+	de := r.parseDesktopFile(desktopFile)
+	if de == nil {
+		return ""
+	}
+
+	// Match by StartupWMClass (exact, case-insensitive)
+	if de.StartupWMClass != "" && strings.EqualFold(de.StartupWMClass, windowClass) {
+		logrus.WithFields(logrus.Fields{
+			"windowClass": windowClass,
+			"icon":        de.Icon,
+			"desktopFile": desktopFile,
+			"matchBy":     "StartupWMClass",
+		}).Debug("Icon found")
+		return de.Icon
+	}
+
+	// Match by Name (exact, case-insensitive)
+	if de.Name != "" && strings.EqualFold(de.Name, windowClass) {
+		logrus.WithFields(logrus.Fields{
+			"windowClass": windowClass,
+			"icon":        de.Icon,
+			"desktopFile": desktopFile,
+			"matchBy":     "Name",
+		}).Debug("Icon found")
+		return de.Icon
+	}
+
+	// Match by desktop filename (without .desktop)
+	baseName := strings.TrimSuffix(entryName, ".desktop")
+	
+	// Exact match always allowed
+	if strings.EqualFold(baseName, windowClass) {
+		logrus.WithFields(logrus.Fields{
+			"windowClass": windowClass,
+			"icon":        de.Icon,
+			"desktopFile": desktopFile,
+			"matchBy":     "filename-exact",
+		}).Debug("Icon found")
+		return de.Icon
+	}
+	
+	// Substring match only if not exactOnly
+	if !exactOnly && strings.Contains(strings.ToLower(baseName), windowClassLower) {
+		logrus.WithFields(logrus.Fields{
+			"windowClass": windowClass,
+			"icon":        de.Icon,
+			"desktopFile": desktopFile,
+			"matchBy":     "filename-substring",
+		}).Debug("Icon found")
+		return de.Icon
+	}
+
+	return ""
 }
 
 func (r *Resolver) parseDesktopFile(path string) *desktopEntry {
