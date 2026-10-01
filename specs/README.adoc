@@ -35,8 +35,8 @@ trees, reference data — lives in the same directory next to the documents when
 its size and content allow keeping it in the repository; otherwise the
 specification says where it is and how to reproduce it.
 
-The form of the directory is checked by `scripts/check-specs.sh` before a
-change is proposed:
+The form of the directory is checked by `make check-specs` — locally before a
+change is proposed and in workflow `test` (specification `001-releases`):
 
 * every entry of `specs/` is `README.adoc`, `constitution.adoc` or a
   directory `NNN-slug` — three digits, a hyphen, lowercase words of letters

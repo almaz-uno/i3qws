@@ -102,6 +102,28 @@ For more usage examples, see link:EXAMPLES.md[EXAMPLES.md].
 
 === Installation
 
-To install with actual Go version, issue:
+From a release: download `i3qws-linux-amd64` and `SHA256SUMS` from
+link:https://github.com/almaz-uno/i3qws/releases[the releases], check and
+install the file:
 
-`go get github.com/cured-plumbum/i3qws/`
+----
+sha256sum -c SHA256SUMS
+install -m 755 i3qws-linux-amd64 ~/.local/bin/i3qws
+----
+
+The file is static and runs on any Linux for `amd64`. What each version
+changed is in link:RELEASE-NOTES.adoc[RELEASE-NOTES.adoc].
+
+From the source, with the Go of `go.mod`:
+
+`make install`
+
+It builds with the version and installs into `$(go env GOPATH)/bin`, or
+`GOBIN` when set.
+
+The version of an installed binary:
+
+`i3qws version`
+
+A running server keeps the old binary until it is restarted:
+`i3qws run --restart`.

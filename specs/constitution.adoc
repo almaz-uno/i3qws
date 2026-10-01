@@ -71,8 +71,14 @@ Documentation describing behavior:
   `/stop`; the client commands are requests to it.
 * Logging — logrus, `github.com/sirupsen/logrus`, with fields (`AGENTS.md`);
   the level is set by `--log.level` (`-L`), `info` by default.
-* Build — `go build`; static checks — `go vet ./...`; tests —
-  `go test ./...`. `install.bash` runs `go mod tidy` and `go install`.
+* `internal/relnotes` and `tools/relnotes` — the text of a release from
+  `RELEASE-NOTES.adoc`; `scripts/` — `release.sh`, the release, and
+  `check-specs.sh`, the form of `specs/`; `.github/workflows/` — CI and
+  releases (section "Releases and versions").
+* Build — `make build` (binary `./i3qws`, ignored by git, static, with the
+  version of `git describe`), installation — `make install`, tests —
+  `make test` (`go test ./...`), static checks — `make vet`, the form of
+  `specs/` — `make check-specs`.
 
 == Configuration and user data
 
@@ -99,9 +105,12 @@ Documentation describing behavior:
 == Verifiability
 
 Tests are updated together with the implementation — in the same change, not
-"later". `go vet ./...`, `go test ./...` and `scripts/check-specs.sh` pass
-locally before a change is proposed for commit. At the time of writing tests
-exist for `pkg/icons` only.
+"later". `make check-specs`, `go vet ./...` and `go test ./...` pass locally
+before a change is proposed for commit, and run in GitHub Actions — workflow
+`test`, on `ubuntu-latest` with the Go of `go.mod` — on every push of a branch
+and every pull request; the same workflow gates the release (specification
+`001-releases`). At the time of writing tests exist for `internal/relnotes`
+and `pkg/icons`.
 
 Tests do not need i3, an X server or rofi. A test that depends on a resource
 of the host system — `.desktop` files, a running i3 — skips when the resource
@@ -142,6 +151,32 @@ Conventional Commits type and a summary — `✨ feat:`, `🐛 fix:`, `📝 docs
 `♻️ refactor:`, `🔧 chore:`. Work happens on `issue/i3qws#NN-slug` branches
 off `main` and lands through a GitHub pull request into `main`.
 
+== Releases and versions
+
+The section is introduced by specification `001-releases`.
+
+* A version is an annotated tag `vX.Y.Z` on `main`; `make build` takes it from
+  `git describe` into `i3qws version`.
+* The minor version for new behavior, a new command, flag or configuration
+  key, or a changed default; the patch for fixes without new behavior.
+* The major version when a release is incompatible with the previous ones — a
+  command, a flag, a key or a field of the list removed or changed in meaning
+  without an alias — but always by agreement with the author: without it such
+  a change goes out as a minor version. Or by the author's direct request.
+* `RELEASE-NOTES.adoc`: a minor or major release is a chapter, its patches are
+  subsections, the newest come first; a heading carries no date — the date of
+  a release is that of its tag.
+* Every version tag gets a GitHub release, built by GitHub Actions
+  (`.github/workflows/release.yml`) when the tag is pushed: the checks on the
+  tag, then `make release TAG=vX.Y.Z` (`scripts/release.sh`). A pushed tag
+  without a release is released by `gh workflow run release -f
+  tag=vX.Y.Z`; `make release` on the author's machine is the same script.
+  The file is built from the tag in a temporary `git worktree`, static, for
+  `linux-amd64`; the text is the section of the notes at the tag.
+* Tags, their push and releases only with the author's consent (section
+  "Working with history"): the script neither creates nor pushes a tag, and
+  pushing a tag is the consent to release it.
+
 == Specifications
 
 * The layout of `specs/` is the project's own, described in
@@ -154,22 +189,19 @@ off `main` and lands through a GitHub pull request into `main`.
 * A specification does not copy what git and GitHub hold — whether the
   change is merged or released, whether its issue is closed: such a fact
   arrives after the last commit of the change and cannot be written in it.
-* The form of `specs/` is checked by `scripts/check-specs.sh` before a change
-  is proposed. The check sees the form, not the truth: that a specification
-  matches the code rests on its criteria (section "Decisions rest on
-  measurements").
+* The form of `specs/` is checked by `make check-specs` before a change is
+  proposed and in workflow `test`. The check sees the form, not the truth:
+  that a specification matches the code rests on its criteria (section
+  "Decisions rest on measurements").
 
 == What the constitution does not regulate
 
 Open questions, recorded as open. Each is closed by a separate change with a
 specification, after which the corresponding section appears above.
 
-* *Releases and CI* — there are no versions, tags or releases, and
-  `install.bash` installs from the working copy; the checks run only locally.
 * *`README.asciidoc` diverges from the code* — it links `EXAMPLES.md`, which
-  does not exist, and installs with `go get`, which no longer installs
-  commands; the long help of `rofi` shows `i3qws rofi | rofi … | i3qws rofi`,
-  while the commands are `rofi menu` and `rofi select`.
+  does not exist; the long help of `rofi` shows `i3qws rofi | rofi … | i3qws
+  rofi`, while the commands are `rofi menu` and `rofi select`.
 * *Window contents* — the server keeps the titles of the user's windows and
   serves them through the socket, and logs them at debug level; there is no
   rule yet on whether they may be logged, written to disk or sent anywhere.
