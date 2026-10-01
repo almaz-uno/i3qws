@@ -1,0 +1,175 @@
+= i3qws project constitution
+:toc: left
+:toc-title: Contents
+:toclevels: 2
+:sectnums:
+:revdate: 2026-10-01
+
+The set of rules a specification does not override. The specification decides
+_what_ a change does; the constitution constrains _how_ it may be done, and it
+applies equally to a human and to an agent.
+
+== Document status
+
+The constitution describes what the project actually follows, not what it
+would like to follow. Every rule is backed by a place in the repository —
+`AGENTS.md`, the directory layout, the code, the documents — and can be
+checked rather than taken on trust.
+
+i3qws adopted spec-driven development with working code already in place: the
+constitution was written against `main` at `f59f2c7` (2026-07-29). Behavior
+implemented before that point is described by `README.asciidoc` and the help
+of the commands, not by specifications, and is not re-specified
+retroactively; the first specification describes a delta to that state. Open
+questions are listed as open at the end of the document.
+
+Amending the constitution is a separate change with its own specification: a
+rule is either rewritten or withdrawn, and the specification says on what
+grounds. Silently diverging from the constitution is not allowed: if the code
+contradicts it, the error is either in the code or in this document, and both
+cases need an explicit decision, not an omission.
+
+== Language
+
+The project language is English (`AGENTS.md`): documentation, comments,
+commit messages, specifications, command help, log messages. Identifiers,
+file names, configuration keys and external terms keep their original
+spelling.
+
+== Documentation is part of the change, not its consequence
+
+A document describing the behavior of the program is updated in the same
+change set that changes that behavior. A description that lags behind the code
+is worse than a missing one: decisions are made from it. A document that no
+longer matches the code is updated or deleted in the same change.
+
+`specs/` holds the rationale and acceptance criteria of individual changes.
+Documentation describing behavior:
+
+* `README.asciidoc` — what the program does, the server and the client
+  commands, i3 bindings, rofi, icons, installation;
+* the help of the commands — `Short` and `Long` of every command in `cmd/` and
+  the descriptions of its flags, printed by `i3qws <command> --help`.
+
+== Stack and layout
+
+* Go (version in `go.mod`), module `github.com/cured-plumbum/i3qws` — the old
+  name of the repository, now `almaz-uno/i3qws`, to which GitHub redirects.
+  Pure Go: the program builds with `CGO_ENABLED=0`, and a change that needs
+  cgo says so in its specification.
+* i3 is spoken to over its IPC through `go.i3wm.org/i3/v4`: events are
+  subscribed to, commands run with `i3.RunCommand`, the tree read with
+  `i3.GetTree`.
+* Command line — Cobra; configuration — Viper; both in `cmd/`, one file per
+  command: `run` (the server), `stop`, `list`, `focus`, `rofi menu`,
+  `rofi select`.
+* `main.go` — the entry point; `pkg/<package>` — one package per
+  responsibility: `i3qws` (the window list kept by the server), `serve` (its
+  HTTP endpoints), `icons` (application icons from `.desktop` files).
+* The server and the client are the same binary. The server listens on a Unix
+  socket and answers HTTP — `labstack/echo` v3 — at `/list`, `/focus/:num` and
+  `/stop`; the client commands are requests to it.
+* Logging — logrus, `github.com/sirupsen/logrus`, with fields (`AGENTS.md`);
+  the level is set by `--log.level` (`-L`), `info` by default.
+* Build — `go build`; static checks — `go vet ./...`; tests —
+  `go test ./...`. `install.bash` runs `go mod tidy` and `go install`.
+
+== Configuration and user data
+
+* The window list lives in the memory of the server only: nothing is written
+  to disk, a restart of the server starts an empty list, and so does a
+  restart of i3 (its shutdown event clears the list).
+* The configuration is read from `$HOME/.i3qws.yaml` or the file given by
+  `--config`, from flags, and from environment variables named after the keys
+  (Viper `AutomaticEnv`, without a prefix). The socket is
+  `$HOME/.i3qws.sock` unless `--socket-file` (`-s`) says otherwise; the server
+  removes a socket that refuses connections before it listens.
+* The server writes into i3: with `--mark-format` (`-m`, `%d` by default) it
+  marks the windows of the list with their positions — `0`, `1`, … — and
+  unmarks the positions the list no longer has. The marks are visible to the
+  user and can be bound to in the i3 configuration.
+* What users have outlives program versions: their i3 configuration calls the
+  commands and flags — `i3qws focus 1`, `i3qws rofi menu | rofi … | i3qws rofi
+  select`, `-s` — their scripts read the JSON of `i3qws list`, and their
+  bindings may use the marks. A change that renames or removes a command, a
+  flag, a configuration key or a field of the list, or changes the marks,
+  says in its specification what happens to existing configurations — the old
+  name is kept as an alias, reported, or knowingly dropped.
+
+== Verifiability
+
+Tests are updated together with the implementation — in the same change, not
+"later". `go vet ./...`, `go test ./...` and `scripts/check-specs.sh` pass
+locally before a change is proposed for commit. At the time of writing tests
+exist for `pkg/icons` only.
+
+Tests do not need i3, an X server or rofi. A test that depends on a resource
+of the host system — `.desktop` files, a running i3 — skips when the resource
+is absent rather than failing. Behavior that can only be observed with i3 —
+focus, marks, the order of the list, the rofi menu — is checked by a manual
+scenario written in the specification: i3 version, steps and the expected
+observable result.
+
+== Decisions rest on measurements
+
+An acceptance criterion says what is checked and how: a number with its
+measurement method, a named test, or a reproducible manual scenario with an
+observable result. "Works better", "faster", "looks right" are not criteria
+and do not enter a specification in that form.
+
+The numbers a decision rests on are reproducible: the specification says on
+what data and how they were obtained, so that the next reader can repeat or
+refute them instead of trusting a retelling.
+
+A decision not yet made is recorded as open. A specification that hides an
+unresolved choice behind a plausible default is worse than one that admits it.
+
+== Secrets
+
+There are no secrets in the repository, and i3qws needs none. Should a change
+introduce one, the local value stays outside git, and the repository holds
+only an example with empty values.
+
+== Working with history
+
+The agent does not run `git commit`, `push`, create tags or branches for a
+commit without the author's explicit agreement — even when the task looks
+finished. Model co-authorship (`Co-Authored-By`, "Generated with…") is not
+added to commit messages or pull request descriptions.
+
+Commit messages follow the style of the recent history: a gitmoji, then a
+Conventional Commits type and a summary — `✨ feat:`, `🐛 fix:`, `📝 docs:`,
+`♻️ refactor:`, `🔧 chore:`. Work happens on `issue/i3qws#NN-slug` branches
+off `main` and lands through a GitHub pull request into `main`.
+
+== Specifications
+
+* The layout of `specs/` is the project's own, described in
+  `specs/README.adoc` — the one of the author's projects qws, siphon and
+  lxqt-weather. No external framework of spec-driven development — OpenSpec,
+  GSD, Spec Kit — is adopted: each brings Markdown among AsciiDoc documents,
+  directories and commands of its own and a release cycle the project does
+  not control. A description of the current behavior is `README.asciidoc` and
+  the help of the commands, not specifications.
+* A specification does not copy what git and GitHub hold — whether the
+  change is merged or released, whether its issue is closed: such a fact
+  arrives after the last commit of the change and cannot be written in it.
+* The form of `specs/` is checked by `scripts/check-specs.sh` before a change
+  is proposed. The check sees the form, not the truth: that a specification
+  matches the code rests on its criteria (section "Decisions rest on
+  measurements").
+
+== What the constitution does not regulate
+
+Open questions, recorded as open. Each is closed by a separate change with a
+specification, after which the corresponding section appears above.
+
+* *Releases and CI* — there are no versions, tags or releases, and
+  `install.bash` installs from the working copy; the checks run only locally.
+* *`README.asciidoc` diverges from the code* — it links `EXAMPLES.md`, which
+  does not exist, and installs with `go get`, which no longer installs
+  commands; the long help of `rofi` shows `i3qws rofi | rofi … | i3qws rofi`,
+  while the commands are `rofi menu` and `rofi select`.
+* *Window contents* — the server keeps the titles of the user's windows and
+  serves them through the socket, and logs them at debug level; there is no
+  rule yet on whether they may be logged, written to disk or sent anywhere.
