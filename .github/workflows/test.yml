@@ -1,0 +1,31 @@
+# Checks on every push of a branch and every pull request (specs/001-releases);
+# the release runs this workflow too, on the code of the tag.
+name: test
+
+on:
+  push:
+    branches: ["**"] # a tag is checked by the release
+  pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        description: "What to check: a branch, a tag or a commit"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: make check-specs
+      - run: make vet
+      - run: make test

@@ -1,0 +1,56 @@
+# GitHub release on a version tag (specs/001-releases): the checks on the tag
+# (workflow test), then the same scripts/release.sh as a local make release.
+# For a pushed tag without a release: gh workflow run release -f tag=vX.Y.Z
+name: release
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "A pushed version tag without a release, vX.Y.Z"
+        required: true
+        type: string
+
+# The tag of a manual run goes only through the environment: it is not put
+# into the text of commands, so the shell does not execute it; the script
+# checks its format
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # env is not available in the with of a call, hence the same expression
+  test:
+    uses: ./.github/workflows/test.yml
+    with:
+      ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          fetch-depth: 0
+      # On a tag event checkout may leave the tag lightweight, and the script
+      # wants it annotated
+      - name: annotated tags
+        run: git fetch --force --tags origin
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: release
+        run: make release TAG="$TAG"
+        env:
+          GH_TOKEN: ${{ github.token }}

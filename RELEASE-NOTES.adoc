@@ -1,0 +1,32 @@
+= i3qws — release notes
+:toc: left
+:toc-title: Contents
+:toclevels: 2
+:revdate: 2026-10-01
+
+Every minor or major release is a chapter, its patches are subsections, the
+newest come first (link:specs/001-releases/spec.adoc[specification 001]); the
+date of a release is that of its tag. The version of a build is
+`i3qws version`. Release files are static: they need no libc and run on any
+Linux for `amd64`.
+
+== 0.1.0
+
+The first release: the window switcher as it has been working, now with a
+version and a GitHub release.
+
+* `i3qws run` keeps the windows of i3 in the order they had focus;
+  `i3qws focus N` focuses the N-th of them, from the tail for a negative N;
+  `i3qws list` prints the list as JSON; `i3qws stop` stops the server.
+* `i3qws rofi menu` and `i3qws rofi select` choose a window in rofi, with its
+  workspace, class, title and marks, and with application icons under
+  `--show-icons`.
+* With `--mark-format` the server marks windows with their positions in the
+  list.
+
+*New*:
+
+* `i3qws version` prints the version of the build.
+* Releases on GitHub: `i3qws-linux-amd64` and `SHA256SUMS`.
+* `make install` builds with the version and installs where `install.bash`
+  did; `install.bash` is gone.

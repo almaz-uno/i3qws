@@ -37,7 +37,7 @@ var rootCmd = &cobra.Command{
 	Use:   "i3qws",
 	Short: "Quick select windows for i3wm.",
 	Long: `Sometimes it's good idea — switch window, not only workspaces in i3wm.
-	
+
 And i3qws will bring this ability to our favorite window manager.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if level, e := logrus.ParseLevel(viper.GetString(logLevelSett)); e == nil {
@@ -50,7 +50,6 @@ And i3qws will bring this ability to our favorite window manager.`,
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }
@@ -76,7 +75,6 @@ func initConfig() {
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			fmt.Println(err)
 			os.Exit(1)
 		}
 
@@ -91,9 +89,7 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
+	viper.ReadInConfig()
 }
 
 func doMain(runFunc func(ctx context.Context) error) {

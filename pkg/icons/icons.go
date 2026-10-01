@@ -153,7 +153,7 @@ func (r *Resolver) matchDesktopFile(desktopFile, entryName, windowClass, windowC
 
 	// Match by desktop filename (without .desktop)
 	baseName := strings.TrimSuffix(entryName, ".desktop")
-	
+
 	// Exact match always allowed
 	if strings.EqualFold(baseName, windowClass) {
 		logrus.WithFields(logrus.Fields{
@@ -164,7 +164,7 @@ func (r *Resolver) matchDesktopFile(desktopFile, entryName, windowClass, windowC
 		}).Debug("Icon found")
 		return de.Icon
 	}
-	
+
 	// Substring match only if not exactOnly
 	if !exactOnly && strings.Contains(strings.ToLower(baseName), windowClassLower) {
 		logrus.WithFields(logrus.Fields{

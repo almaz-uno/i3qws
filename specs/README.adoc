@@ -1,0 +1,149 @@
+= Specifications
+:toc: left
+:toc-title: Contents
+:toclevels: 2
+:sectnums:
+:revdate: 2026-10-01
+
+Spec-driven development: a change that will outlive a single sitting gets a
+written specification before any code is written. The point is not ceremony:
+the decisions, and the measurements they rest on, stop living in chat history
+and start living next to the code they constrain.
+
+The rules a specification does not override are collected in the
+<<constitution.adoc#,project constitution>>. The specification decides what a
+change does; the constitution constrains how it may be done.
+
+== Layout
+
+----
+specs/
+  README.adoc              this file
+  constitution.adoc        rules that apply to every change
+  NNN-short-slug/
+    spec.adoc              what and why, plus acceptance criteria
+    research.adoc          measurements and findings the spec rests on
+    plan.adoc              technical approach: files, order, what is reused
+    tasks.adoc             ordered steps, each verifiable on its own
+----
+
+Directories are numbered in the order work starts. The slug names the change,
+not its implementation: `001-workspace-filter`, not `001-add-filter-flag`.
+
+Supporting material for a change — measurement scripts, recorded i3 events or
+trees, reference data — lives in the same directory next to the documents when
+its size and content allow keeping it in the repository; otherwise the
+specification says where it is and how to reproduce it.
+
+The form of the directory is checked by `make check-specs` — locally before a
+change is proposed and in workflow `test` (specification `001-releases`):
+
+* every entry of `specs/` is `README.adoc`, `constitution.adoc` or a
+  directory `NNN-slug` — three digits, a hyphen, lowercase words of letters
+  and digits joined by hyphens;
+* no two directories share a number;
+* every directory has `spec.adoc`, whose header — the lines before the first
+  empty one — has `:status:` of section "Rules" and `:issue:` with the number
+  of the issue;
+* an `implemented` specification has the section `== Results`.
+
+The check sees the form, not the truth: that a specification matches the code
+rests on its acceptance criteria.
+
+== Which documents a change needs
+
+Not all four every time.
+
+`spec.adoc`:: Always. Without acceptance criteria there is nothing to check,
+and "looks right" is not a criterion.
+
+`research.adoc`:: When the plan rests on facts that had to be established: a
+measurement, the behavior of an external library, of i3 or of rofi, a data
+format. The numbers are recorded together with how they were obtained, so
+that the next reader does not repeat the work or rely on a stale memory of
+it.
+
+`plan.adoc`:: When the change touches more than one file or must preserve
+something that already exists.
+
+`tasks.adoc`:: When the order of work matters for verification — for example,
+when a "before" measurement must be taken before anything changes.
+
+A one-line bug fix needs none of them.
+
+== Relation to issues
+
+A specification and an issue answer different questions and do not replace
+each other. The specification says what is being done and why, and carries the
+acceptance criteria; the issue tracks where the work is right now and anchors
+the branch, the pull request and the release notes.
+
+Issues live in GitHub, `almaz-uno/i3qws`. The order:
+
+. The issue comes first: a title, two or three lines of substance and a link
+  to the specification. Acceptance criteria are not copied into the issue —
+  they are linked. The tracker is not versioned together with the code, and a
+  diverged copy of the criteria misleads whoever reads the change half a year
+  later.
++
+The link is an absolute link to the file on `main`:
+`[specs/NNN-slug/spec.adoc](https://github.com/almaz-uno/i3qws/blob/main/specs/NNN-slug/spec.adoc)`.
+It resolves once the branch is merged; until then the specification is read in
+the pull request.
+. Then the branch `issue/i3qws#NN-slug` is created off `main`, where the slug
+  matches the slug of the specification directory. The issue comes first
+  precisely for this reason: without its number the branch cannot be named
+  correctly, and renaming it later is an extra step. The link is then visible
+  from both sides: from the branch — which specification; from the directory —
+  which issue.
+. The `:issue:` attribute with the issue number is added to the header of
+  `spec.adoc`, so that the link is two-way and survives a branch rename.
+. The specification is the first commit of the branch, `📝 docs:`, before any
+  code. It reaches the repository before what it describes, and the pull
+  request shows that the code came after the decision, not the other way
+  round. If the work is large and the specification has to be approved before
+  implementation starts, it goes out as a separate pull request from the same
+  branch, and the code continues after it is merged.
+. A pull request whose specification is not yet `implemented` — its results
+  still to be written — is opened as a draft and marked ready (`gh pr ready`)
+  with the commit that writes them. Results often cite the checks of the pull
+  request itself, so they follow its opening; GitHub does not merge a draft,
+  and a green pull request whose specification still says `draft` does not
+  look ready.
+
+The `tasks.adoc` checklist is not duplicated in the issue. The list of steps
+lives either in the specification or in the issue, never in both: two copies
+diverge by the third step.
+
+== Rules
+
+* English, per `AGENTS.md`.
+* An acceptance criterion says what is checked and how: a number with its
+  measurement method, a named test, or a reproducible manual scenario with an
+  observable result. An adjective is not a criterion.
+* A change in behavior the user can see is described before it is implemented;
+  the documentation describing that behavior is updated in the same change set.
+* Since the project has working code, a specification describes a _delta_ to
+  it. It names what stays unchanged rather than restating all requirements —
+  otherwise unmentioned behavior starts to look revoked.
+* The meaning of existing data is not changed retroactively. If a change alters
+  the shape of what users already have — commands and flags their i3
+  configuration calls, keys of `~/.i3qws.yaml`, the socket path, the marks the
+  server puts on windows, the JSON of `i3qws list` — the specification says
+  what happens to existing configurations.
+* Open decisions are listed as open.
+* A specification is updated together with the code, in the same change set. A
+  specification that has diverged from the implementation misleads more than
+  its absence would.
+* The header of every document carries `:revdate:`, and `spec.adoc` also
+  carries `:issue:` and `:status:`. `:status:` holds one of three values and
+  nothing else, set in the same change set as what it describes:
+** `draft` — nothing is implemented yet;
+** `implemented` — the change is implemented, and section "Results" says how
+   each acceptance criterion is met;
+** `dropped` — the change was abandoned, and the specification says why.
+* Whether the change is merged or released, whether its issue is closed, is
+  told by git and GitHub, not by the specification: such a fact arrives after
+  the last commit of the change and cannot be written in it. How the change
+  was measured is told by "Results"; what remains open, by the list of open
+  decisions.
