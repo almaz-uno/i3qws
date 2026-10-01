@@ -1,0 +1,158 @@
+= 001 — versions, releases and CI
+:toc: left
+:toc-title: Contents
+:sectnums:
+:revdate: 2026-10-01
+:status: draft
+:issue: 1
+
+== What and why
+
+i3qws has no versions and no builds outside the author's working copies.
+There are no tags, no `version` command, and `install.bash` installs whatever
+the working copy holds, after `go mod tidy` has rewritten `go.mod` and
+`go.sum`. There is no CI: `go vet` and `go test` run only locally. The
+constitution records it as the open question "Releases and CI"; the author
+asked for the release cycle together with spec-driven development
+(2026-10-01). The change closes the question, and the rules become a section
+of the constitution.
+
+The approach is the one of qws (its specifications 004 and 006), with one
+difference: i3qws is pure Go, so it is built with `CGO_ENABLED=0` into a
+static binary that runs on any Linux of its architecture, and the runner's
+Ubuntu serves as the build environment — no Debian container.
+
+Unchanged: the program, apart from the new command `i3qws version`; its
+commands, flags, configuration, socket, marks and the JSON of `i3qws list`.
+
+== Behavior
+
+. *Version* — an annotated tag `vX.Y.Z` on `main`. `make build` passes
+  `git describe --tags --always --dirty` to `cmd.version`; `i3qws version`
+  prints `i3qws <version>`. Outside a repository, and with a plain
+  `go build` or `go install`, it is `dev`.
+. *Numbers*: the minor version for new behavior, a new command, flag or
+  configuration key, or a changed default; the patch for fixes without new
+  behavior; the major version when a release is incompatible with the
+  previous ones — a command, a flag, a key or a field of the list removed or
+  changed in meaning without an alias — but only by agreement with the
+  author, otherwise it goes out as a minor version, or by the author's direct
+  request.
+. *`RELEASE-NOTES.adoc`* in English: a minor or major release is a chapter
+  `== X.Y.0`, its patches are subsections `=== X.Y.Z`, the newest come first.
+  A heading carries no date: the date of a release is that of its tag.
+. *A release* is a GitHub release on a version tag: the title "i3qws X.Y.Z",
+  the files `i3qws-linux-amd64` and `SHA256SUMS`, and as text the section of
+  the release in `RELEASE-NOTES.adoc` at the tag, in Markdown — for `X.Y.0`
+  the chapter up to its first subsection, for a patch its subsection;
+  `link:path[text]` becomes a link to the file at the tag, `Label::` and
+  `*bold*` become bold.
+. *`make release TAG=vX.Y.Z`* (`scripts/release.sh`) refuses, before
+  building, a tag that is malformed, not annotated, not pushed to `origin`, or
+  already released — pushing a tag and replacing a release are the author's
+  decisions. It builds from a temporary `git worktree` at the tag, checks that
+  `i3qws version` of the build is the tag, writes `SHA256SUMS`, and publishes
+  with `gh release create --verify-tag`.
+. *`make build`* builds `./i3qws` with `CGO_ENABLED=0` and `-trimpath`;
+  *`make install`* installs the same build with `go install` into
+  `$(go env GOPATH)/bin`, or `GOBIN` when set — where `install.bash` put it.
+  `install.bash` is removed. `make vet`, `make test` and `make check-specs`
+  run `go vet ./...`, `go test ./...` and `scripts/check-specs.sh`.
+. *Workflow `test`* runs `make check-specs`, `make vet` and `make test` on
+  every push of a branch and every pull request, on `ubuntu-latest` with the
+  Go of `go.mod`.
+. *Workflow `release`* runs on the push of a version tag: `test` on the tag,
+  then `make release`. A pushed tag without a release is released by hand
+  with `gh workflow run release -f tag=vX.Y.Z`.
+. *`README.asciidoc`*, section "Installation": a release file checked against
+  `SHA256SUMS`, or `make install` from the source; `i3qws version`.
+. *The first release* is `v0.1.0`, tagged by the author once the pull request
+  of this specification is merged.
+
+== Choices made for the author
+
+Each is the recommended option, taken so that the work could proceed; the
+author may overturn any of them.
+
+. *`main` stays the only long-lived branch.* qws and lxqt-weather work off
+  `develop`; i3qws has never had one, and a second branch would add a merge
+  step without a reader for it. Branches `issue/i3qws#NN-slug` start from
+  `main`, and tags are set on it.
+. *A static `linux-amd64` binary, without a container.* With
+  `CGO_ENABLED=0` the binary needs no libc, so the runner's Ubuntu builds a
+  file that runs on Debian 12 as well. `linux-arm64` would cost one more
+  build, but there is no such machine to run it on.
+. *The first version is 0.1.0*, as in qws, siphon and lxqt-weather, though
+  the program is five years old: 1.0.0 is the author's to call.
+. *The release text tool is qws's*, `internal/relnotes` with its tests, and
+  `tools/relnotes` as the command: in i3qws, `cmd/` is the Cobra package of
+  the program itself.
+. *No date in the headings of the notes.* qws and siphon write one, but a
+  release date arrives with the tag, after the last commit of the change —
+  the kind of fact a document cannot hold true (constitution,
+  "Specifications"); git gives it: `git log -1 --format=%cs vX.Y.Z`.
+. *`install.bash` gives way to `make install`.* It ran `go mod tidy` on every
+  install, rewriting `go.mod` and `go.sum` in the working copy, and built
+  without a version.
+
+== Existing installations
+
+* The binary installed by `install.bash` is `$(go env GOPATH)/bin/i3qws`;
+  `make install` replaces it in the same place, and a release file replaces it
+  wherever the user puts it. Commands, flags, `~/.i3qws.yaml`, the socket and
+  the marks do not change: i3 bindings keep working.
+* A running server keeps the old binary until it is restarted:
+  `i3qws run --restart` stops it through the socket and takes its place.
+
+== Constitution
+
+* A new section "Releases and versions" with the rules above.
+* Section "Verifiability": the checks run in GitHub Actions on every push and
+  pull request, and gate the release.
+* Section "Stack and layout": the `Makefile` targets, `internal/relnotes`,
+  `tools/relnotes`, `scripts/`, `.github/workflows/`; `install.bash` is gone.
+* Section "Specifications" and section "Layout" of `specs/README.adoc`: the
+  check runs as `make check-specs`, and in workflow `test` as well.
+* The open question "Releases and CI" is closed; from "`README.asciidoc`
+  diverges from the code", the installation with `go get`.
+
+== Acceptance criteria
+
+[cols="1,6"]
+|===
+| # | Criterion and method
+
+| K1
+| Release text: from the real `RELEASE-NOTES.adoc`, the chapter of 0.1.0
+  without its heading; from a fixture, a patch — only its subsection, and a
+  chapter — without the text of its patches; a missing section — an error.
+  Links broken over a line, `Label::` and bold translated. Test in
+  `internal/relnotes`.
+
+| K2
+| `scripts/release.sh` refuses before building, with no worktree made: no
+  tag or a malformed one — the usage, exit status 2; a tag that does not
+  exist or is not annotated — exit status 1. Run on ws1.
+
+| K3
+| `make build` in a clean working copy gives an `i3qws version` equal to
+  `git describe --tags --always --dirty`; the binary is static (`file`,
+  `ldd`). `GOBIN=<temporary directory> make install` puts there a binary
+  with the same version. `make check-specs`, `make vet` and `make test` pass.
+
+| K4
+| Workflow `test` passes on GitHub for the branch and for its pull request.
+
+| K5
+| Release `v0.1.0`, after the author's tag: workflow `release` runs `test`
+  on the tag, then `make release`; the release has `i3qws-linux-amd64` and
+  `SHA256SUMS`; the downloaded binary matches `SHA256SUMS` and prints
+  `i3qws v0.1.0` on ws1. `make release` then refuses the released tag.
+|===
+
+== Outside the specification
+
+* `linux-arm64` and other platforms.
+* Packages (`.deb`) and an install script for releases.
+* The other divergences of `README.asciidoc` from the code — the open
+  question stays open.
