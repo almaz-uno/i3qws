@@ -3,7 +3,7 @@
 :toc-title: Contents
 :sectnums:
 :revdate: 2026-10-01
-:status: draft
+:status: implemented
 :issue: 1
 
 == What and why
@@ -149,6 +149,41 @@ author may overturn any of them.
   `SHA256SUMS`; the downloaded binary matches `SHA256SUMS` and prints
   `i3qws v0.1.0` on ws1. `make release` then refuses the released tag.
 |===
+
+== Results
+
+2026-10-01, ws1 (Debian 12, Go 1.26.0) and GitHub Actions.
+
+[cols="1,6"]
+|===
+| # | How it is met
+
+| K1 | `TestExtractNotes`, `TestExtractLevels`, `TestMarkdown`
+  (`internal/relnotes`), locally and in CI.
+| K2 | ws1: `make release TAG=` and `TAG=v0.1` — the usage, exit status 2;
+  `TAG=v9.9.9` — "v9.9.9 is not an annotated tag", exit status 1; `git
+  worktree list` shows no worktree after any of them.
+| K3 | Clean working copy at `8664d26`: `i3qws version` prints
+  `i3qws 8664d26`, equal to `git describe --tags --always --dirty`; `file` —
+  "statically linked", `ldd` — "not a dynamic executable";
+  `GOBIN=<temporary directory> make install` gives `i3qws 8664d26` too.
+  `make check-specs`, `make vet`, `make test` pass.
+| K4 | Workflow `test` on `8664d26`: run 36910600259 (push) and 36910607537
+  (pull request), steps `make check-specs`, `make vet`, `make test` passed.
+| K5 | After the author's tag `v0.1.0` — section "Open decisions".
+|===
+
+Found along the way: the repository is `almaz-uno/i3qws`; GitHub redirects
+the old `cured-plumbum/i3qws`, which `origin` and the module path still name.
+Links in the documents use the new name; the module path is left as it is —
+changing it is a change of its own.
+
+== Open decisions
+
+. K5 is measured on `v0.1.0`, once the author tags the merge and pushes the
+  tag, and recorded by a change of its own.
+. The module path `github.com/cured-plumbum/i3qws` after the move of the
+  repository.
 
 == Outside the specification
 
