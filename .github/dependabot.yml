@@ -1,0 +1,27 @@
+# Dependency updates (specs/002-dependency-updates): once a month Dependabot
+# proposes the new versions of the Go modules and of the actions of the
+# workflows, one pull request per ecosystem into main, checked by workflow
+# test as any other. Security updates do not wait for the month.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      go:
+        patterns: ["*"]
+    commit-message:
+      prefix: "⬆️ build"
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "⬆️ build"
+      include: scope
