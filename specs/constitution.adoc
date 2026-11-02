@@ -3,7 +3,7 @@
 :toc-title: Contents
 :toclevels: 2
 :sectnums:
-:revdate: 2026-10-01
+:revdate: 2026-10-04
 
 The set of rules a specification does not override. The specification decides
 _what_ a change does; the constitution constrains _how_ it may be done, and it
@@ -74,7 +74,9 @@ Documentation describing behavior:
 * `internal/relnotes` and `tools/relnotes` — the text of a release from
   `RELEASE-NOTES.adoc`; `scripts/` — `release.sh`, the release, and
   `check-specs.sh`, the form of `specs/`; `.github/workflows/` — CI and
-  releases (section "Releases and versions").
+  releases (section "Releases and versions"); `.github/dependabot.yml` —
+  pull requests that update the Go modules and the actions, once a month
+  (specification `002-dependency-updates`).
 * Build — `make build` (binary `./i3qws`, ignored by git, static, with the
   version of `git describe`), installation — `make install`, tests —
   `make test` (`go test ./...`), static checks — `make vet`, the form of

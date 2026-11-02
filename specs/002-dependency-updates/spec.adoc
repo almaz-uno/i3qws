@@ -1,0 +1,217 @@
+= 002 — dependency updates proposed by Dependabot
+:toc: left
+:toc-title: Contents
+:sectnums:
+:revdate: 2026-10-05
+:status: implemented
+:issue: 3
+
+== What and why
+
+Dependencies of i3qws are updated by hand, and they lag behind. On
+2026-10-01 `go list -m -u all` at `1364508` finds a newer version for five of
+the seven direct modules — `k8s.io/apimachinery` v0.30.0 against v0.37.1,
+`github.com/spf13/viper` v1.18.2 against v1.21.0, `github.com/spf13/cobra`
+v1.8.0 against v1.10.2, `go.i3wm.org/i3/v4` v4.21.0 against v4.24.0,
+`github.com/sirupsen/logrus` v1.9.3 against v1.10.2 — and for 90 modules in
+all, indirect ones included. `govulncheck` (`golang.org/x/vuln`, latest on
+2026-10-01) finds vulnerabilities the code reaches in two indirect modules,
+`golang.org/x/net` v0.24.0 (fixed in v0.53.0 and v0.55.0) and
+`golang.org/x/text` v0.14.0 (fixed in v0.39.0), and nothing told the author.
+
+The change:
+
+. `.github/dependabot.yml`: Dependabot proposes the updates of the Go modules
+  and of the actions of the workflows, once a month, one pull request per
+  ecosystem into `main`;
+. Dependabot alerts and security updates are turned on in the settings of
+  the repository: a module with a published advisory, an indirect one
+  included, gets a pull request without waiting for the month.
+
+The same change is made in qws, siphon and lxqt-weather.
+
+Unchanged: the program; the workflows; `labstack/echo` stays at v3 — its
+v4 is another import path, which Dependabot does not propose (constitution,
+"Stack and layout"); a Dependabot pull request is reviewed and merged by the
+author like any other and goes through workflow `test`.
+
+== Choices made for the author
+
+Each is the recommended option, taken so that the work could proceed; the
+author may overturn any of them.
+
+. *Once a month, not once a week.* A new version that fixes nothing known
+  can wait; one that fixes a vulnerability comes as a security update, as
+  soon as the advisory is published. Twelve pull requests a year per
+  ecosystem are reviewed; fifty-two would be merged unread.
+. *Direct modules in the monthly update, as Dependabot does by default.* The
+  indirect ones move when a direct one requires it, and the vulnerable ones
+  are covered by security updates; all 90 every month would make a pull
+  request no one reads.
+. *One pull request per ecosystem* (`groups`, pattern `*`): "bump the go
+  group with 5 updates" instead of five pull requests, each with its own run
+  of workflow `test` and its own conflict in `go.sum` with the others. When
+  one update of a group breaks the build, it is fixed on the branch of the
+  pull request or excluded with `ignore`.
+. *Major versions in the same group.* Dependabot proposes no new major
+  version of a Go module — it is another import path; for an action, a
+  major version is checked by workflow `test` just as a minor one.
+. *Commit message `⬆️ build(deps): …`*: the gitmoji of upgraded
+  dependencies and the Conventional Commits type `build`, after the style of
+  the history (constitution, "Working with history"); the rest is
+  Dependabot's.
+. *Default labels* — `dependencies` and the ecosystem, `go` or
+  `github_actions`; Dependabot creates them.
+
+== Behavior
+
+`.github/dependabot.yml`:
+
+[source,yaml]
+----
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      go:
+        patterns: ["*"]
+    commit-message:
+      prefix: "⬆️ build"
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "⬆️ build"
+      include: scope
+----
+
+Dependabot reads the file from `main`, the default branch, and checks both
+ecosystems as soon as it appears there, then once a month; each check is a
+run of "Dependabot Updates" in the Actions tab. It updates the direct
+dependencies of `go.mod` — those without `// indirect` — and the actions of
+`uses:` in `.github/workflows/`, and raises the `go` line of `go.mod` only
+when a new version requires it. A security update is a pull request of its
+own, outside the groups, with the same commit message once the file is on
+`main`. Seen in qws and siphon, where it was set up first: a group of one
+update is titled "bump <module> from <old> to <new> in the go group"; with a
+gitmoji in the prefix Dependabot capitalizes "Bump" and writes the commit
+message with the shortcode of the gitmoji, `:arrow_up: build(deps): Bump …`,
+while the title of the pull request keeps the character (qws, #38).
+
+An update that brings in a dependency with cgo fails workflow `test`: the
+`Makefile` builds with `CGO_ENABLED=0`.
+
+== Constitution
+
+Section "Stack and layout" names `.github/dependabot.yml` next to
+`.github/workflows/`.
+
+== Acceptance criteria
+
+[cols="1,6"]
+|===
+| # | Criterion and method
+
+| K1
+| `.github/dependabot.yml` is valid against the schema of the file,
+  `https://json.schemastore.org/dependabot-2.0.json`:
+  `check-jsonschema --schemafile <schema> .github/dependabot.yml` exits 0.
+
+| K2
+| After the merge, the first run of "Dependabot Updates" for `gomod` and
+  for `github-actions` passes (`gh run list -R almaz-uno/i3qws -e
+  dynamic`), and every pull request it opens targets `main`, is titled
+  `⬆️ build(deps): Bump …`, carries label `dependencies` and runs workflow
+  `test`. An ecosystem with nothing to update passes with no pull request.
+
+| K3
+| `gh api repos/almaz-uno/i3qws/vulnerability-alerts` answers 204, and
+  `gh api repos/almaz-uno/i3qws/automated-security-fixes` answers
+  `"enabled":true`.
+
+| K4
+| `gh api repos/almaz-uno/i3qws/dependabot/alerts` lists the advisories of
+  `golang.org/x/net` and `golang.org/x/text` that `govulncheck` reports, each
+  with a security update pull request or the reason Dependabot gives for not
+  opening one.
+
+| K5
+| `make check-specs` passes on the branch and in workflow `test` on the
+  pull request; section "Stack and layout" of the constitution names
+  `.github/dependabot.yml`.
+|===
+
+K2 can only be met after the merge: Dependabot reads its configuration from
+the default branch alone. Its result reaches `main` by a pull request of its
+own from the same branch.
+
+== Results
+
+2026-10-04, ws1 (Debian 12, bash 5.2.15) and GitHub.
+
+[cols="1,6"]
+|===
+| # | How it is met
+
+| K1 | `check-jsonschema` 0.38.2 with the schema fetched on 2026-10-04 exits
+  0 at `60a8b7b`. That the check rejects a wrong file — `interval:
+  fortnightly` — was shown in qws (its specification 012, K1).
+| K2 | After the merge, by a pull request of its own.
+| K3 | After `gh api -X PUT` of both on 2026-10-04: `vulnerability-alerts`
+  answers 204, `automated-security-fixes` answers
+  `{"enabled":true,"paused":false}`.
+| K4 | Met for `golang.org/x/net` in part, not met for `golang.org/x/text`.
+  Within minutes of the switch 22 alerts appeared: 17 for
+  `golang.org/x/crypto` v0.22.0, 3 for `golang.org/x/net` v0.24.0 (#3, #5,
+  #8, fixed in v0.36.0, v0.38.0 and v0.55.0), #22 for `labstack/echo` and #1
+  for `dgrijalva/jwt-go`, none for `golang.org/x/text`. Dependabot opened one
+  security update, #5: `golang.org/x/crypto` to v0.52.0, which takes
+  `golang.org/x/net` to v0.54.0, `golang.org/x/sys` to v0.45.0 and
+  `golang.org/x/text` to v0.37.0; workflow `test` passed on it. It covers
+  #3 and #5 of `golang.org/x/net` but not #8 (v0.55.0), nor GO-2026-5970 of
+  `golang.org/x/text` (v0.39.0). No other security update came in the 15
+  minutes that followed, and the API gives no reason. GO-2026-5970 has no
+  GHSA alias, only CVE-2026-56852, so GitHub raises no alert for it; nor
+  have GO-2026-5026 and GO-2026-4918, the two of `golang.org/x/net` that
+  `govulncheck` reports. #22 and #1 have no fixed version (section "Open
+  decisions").
+| K5 | `make check-specs` at `60a8b7b` exits 0. Workflow `test` on
+  `60a8b7b`: run 37233577283 (push) and 37233580089 (pull request) passed.
+  Section "Stack and layout" of the constitution names the file.
+|===
+
+== Open decisions
+
+* *A cooldown.* Option `cooldown` (`default-days` for `gomod` and
+  `github-actions`) makes Dependabot skip a version until it is so many days
+  old, so that a compromised release is more likely withdrawn before it is
+  proposed. Not set, as in qws, siphon and lxqt-weather: a monthly check
+  already proposes most versions weeks after their release, and a security
+  update ignores it.
+* *The gitmoji of Dependabot's commits.* With prefix `⬆️ build` Dependabot
+  writes `:arrow_up: build(deps): Bump …` (qws, #38): a gitmoji still, in the
+  form of its shortcode, which `git log` shows as text, while the history
+  uses the character. Kept as in qws; the alternative is prefix `build`, as
+  in siphon, which gives `build(deps): bump …` without a gitmoji.
+* *What the alerts of GitHub do not see.* A Go vulnerability without a GHSA
+  alias — GO-2026-5970 of `golang.org/x/text`, GO-2026-5026 and
+  GO-2026-4918 of `golang.org/x/net` (K4) — gets neither an alert nor a
+  security update; `govulncheck` sees it. A step `govulncheck ./...` in
+  workflow `test` would close the gap, and would also fail on the standard
+  library of the Go 1.25.0 that `go.mod` pins for CI; or the two modules are
+  raised by hand.
+* *`labstack/echo` v3.* Alerts #22 (echo, high) and #1 (`dgrijalva/jwt-go`,
+  high) have no fixed version: v3 is not fixed, and `jwt-go` and
+  `golang.org/x/crypto` come into the build through it — `echo/middleware`
+  and `acme/autocert` (`go mod why`). The fix is v4 from 4.15.3 or v5 from
+  5.2.0, another import path, which Dependabot does not propose: a change of
+  its own.
